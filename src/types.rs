@@ -82,13 +82,26 @@ impl GoodType {
             artifacts: vec![],
         }
     }
+
     pub fn to_file(&self, filename: String) -> Result<(), Box<dyn std::error::Error>> {
+        use std::fs::File;
         use std::io::Write;
+
         let json_string = serde_json::to_string(self)?;
-        let mut file = std::fs::File::create(filename)?;
+        let mut file = File::create(filename)?;
         writeln!(&mut file, "{}", json_string)?;
         Ok(())
     }
+
+    pub fn from_file(filename: String) -> Result<GoodType, Box<dyn std::error::Error>> {
+        use std::fs::File;
+        use std::io::BufReader;
+
+        let file = File::open(filename)?;
+        let reader = BufReader::new(file);
+        Ok(serde_json::from_reader(reader)?)
+    }
+
 }
 
 #[allow(non_snake_case)]

@@ -13,7 +13,7 @@
 *+ Add Build.rs to update loc.cbor when loc.json is updated
 *? possibly download new loc.json altogether
 *+ Move types to a different file (?) https://stackoverflow.com/questions/28010796/move-struct-into-a-separate-file-without-splitting-into-a-separate-module
-* Move derive_literal to build.rs
+* Move derive_literal to build.rs for faster runtime
 */
 
 #[macro_use]
@@ -43,16 +43,16 @@ lazy_static! {
 }
 
 fn main() {
-    let mut output = GoodType::new();
+    //let mut output = GoodType::new();
     match pull_file(ARGS.uid.to_string()) {
         Ok(player) => {
-            parse_data(player, &mut output);
+            parse_data(player).unwrap();
         },
         Err(e) => panic!("Error parsing Enka response, check your UID. {:?}",e),
     }
 }
-// Possilbly move to build.rs
-fn derive_literal(input: &str) -> String {
+// Consider moving to build.rs for faster runtime
+fn derive_literal(input: String) -> String {
     input
         .split(" ")
         .map(|word| format!("{}{}", &word[..1].to_uppercase(), &word[1..]))
@@ -63,20 +63,31 @@ fn derive_literal(input: &str) -> String {
         .collect()
 }
 
-fn parse_data(enka: EnkaPlayer, ref mut data:&mut GoodType) {
+fn parse_data(enka: EnkaPlayer) -> anyhow::Result<()> {
     let filename: String = format!("{}-{}.json", enka.playerInfo.nickname, enka.uid);
+    let mut data: GoodType;
+    if std::path::Path::new(&filename).exists() {
+        // Change when accounted for copy artifacts
+        data = GoodType::new();
+        //data = GoodType::from_file(filename.clone()).unwrap();
+    } else {
+        data = GoodType::new();
+    }
     for character in enka.avatarInfoList {
         for item in character.equipList {
             let flat = item.flat;
             match item.reliquary {
                 Some(artifact) => {
+                    // Test if artifact exists here by iterating over data
+                    // Problems to solve: same artifact, same artifact upgraded (+lvl), 2 artifacts of the same type on the same character (?)
+                    // unwraps here should be covered by the match above
                     let mut good_artifact = GoodArtifact {
-                        setKey: derive_literal(&LOCALE[&flat.setNameTextMapHash.unwrap()]),
+                        setKey: derive_literal(LOCALE[&flat.setNameTextMapHash.unwrap()].to_owned()),
                         slotKey: ENKA[&flat.equipType.unwrap()].to_owned(),
                         level: artifact.level-1,
                         rarity: flat.rankLevel,
                         mainStatKey: ENKA[&flat.reliquaryMainstat.unwrap().mainPropId].to_owned(),
-                        location: derive_literal(&CHARACTERS[&character.avatarId.to_string()]),
+                        location: derive_literal(CHARACTERS[&character.avatarId.to_string()].to_owned()),
                         substats: vec![],
                         _id: item.itemId,
                     };
@@ -97,6 +108,7 @@ fn parse_data(enka: EnkaPlayer, ref mut data:&mut GoodType) {
         }
     };
     data.to_file(filename).unwrap();
+    Ok(())
 }
 
 fn pull_file(uid: String) -> Result<EnkaPlayer, minreq::Error> {
@@ -108,10 +120,10 @@ mod tests {
     use super::*;
     #[test]
     fn test_derive_literal() {
-        assert_eq!("GladiatorsFinale", derive_literal("Gladiator's Finale"));
-        assert_eq!("SpiritLocketOfBoreas", derive_literal("Spirit Locket of Boreas"));
-        assert_eq!("TheCatch", derive_literal("The Catch"));
-        assert_eq!("ABDD", derive_literal("'''A b d435 D123/ /'''"));
+        assert_eq!("GladiatorsFinale", derive_literal("Gladiator's Finale".to_string()));
+        assert_eq!("SpiritLocketOfBoreas", derive_literal("Spirit Locket of Boreas".to_string()));
+        assert_eq!("TheCatch", derive_literal("The Catch".to_string()));
+        assert_eq!("ABDD", derive_literal("'''A b d435 D123/ /'''".to_string()));
         // Add test for every non-alphabetical symbol
     }
     #[test]
