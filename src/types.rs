@@ -22,41 +22,39 @@ pub struct PlayerInfo {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AvatarInfo {
     pub avatarId: u32,
-    pub equipList: Vec<Equip>,
+    pub equipList: Vec<EquipVariant>,
 }
 
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Equip {
-    pub itemId: u32,
-    pub weapon: Option<EquipWeapon>,
-    pub reliquary: Option<EquipRelic>,
-    pub flat: EquipFlat,
+#[serde(untagged)]
+pub enum EquipVariant {
+    Artifact {
+        itemId: u32,
+        reliquary: EquipRelic,
+        flat: EquipFlatVariantArtifact,
+    },
+    Weapon {
+        itemId: u32,
+        weapon: EquipWeapon,
+        flat: EquipFlatVariantWeapon,
+    },
 }
-
+// Artifact
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]
-pub struct EquipFlat {
-    pub nameTextMapHash: String,
-    pub setNameTextMapHash: Option<String>,
+pub struct EquipFlatVariantArtifact {
+    pub setNameTextMapHash: String,
     pub rankLevel: u8,
-    pub reliquaryMainstat: Option<RelicMS>,
-    pub reliquarySubstats: Option<Vec<RelicSS>>,
-    pub equipType: Option<String>,
+    pub reliquaryMainstat: RelicMS,
+    pub reliquarySubstats: Vec<RelicSS>,
+    pub equipType: String,
 }
 
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EquipRelic {
     pub level: u8,
-}
-
-#[allow(non_snake_case)]
-#[derive(Serialize, Deserialize, Debug)]
-pub struct EquipWeapon {
-    pub level: u8,
-    pub promoteLevel: u8,
-    pub affixMap: std::collections::HashMap<u32,u8>,
 }
 
 #[allow(non_snake_case)]
@@ -73,6 +71,21 @@ pub struct RelicSS {
     pub statValue: f64,
 }
 
+// Weapon
+#[allow(non_snake_case)]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct EquipFlatVariantWeapon {
+    pub nameTextMapHash: String,
+    pub rankLevel: u8,
+}
+
+#[allow(non_snake_case)]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct EquipWeapon {
+    pub level: u8,
+    pub promoteLevel: u8,
+    pub affixMap: std::collections::HashMap<String,u8>,
+}
 // GOOD format description (not complete) https://frzyc.github.io/genshin-optimizer/#/doc
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]

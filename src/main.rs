@@ -18,6 +18,7 @@
 *+ Add Build.rs to update loc.cbor when loc.json is updated
 *+ Move types to a different file (?) https://stackoverflow.com/questions/28010796/move-struct-into-a-separate-file-without-splitting-into-a-separate-module
 *+ Pull the previous json to append stuff (handle updating same arts and adding new ones)
+*+ use variants to distignuish weapon and artifact
  */
 
 #[macro_use]
@@ -25,7 +26,7 @@ extern crate lazy_static;
 
 mod types;
 
-use types::{EnkaPlayer,GoodType,GoodArtifact,GoodSubstat,GoodWeapon};
+use types::{EnkaPlayer,GoodType,GoodArtifact,GoodSubstat,GoodWeapon,EquipVariant};
 use std::collections::HashMap;
 use clap::Parser;
 
@@ -47,7 +48,6 @@ lazy_static! {
 }
 
 fn main() {
-    //let mut output = GoodType::new();
     match pull_file(ARGS.uid.to_string()) {
         Ok(player) => {
             parse_data(player).unwrap();
@@ -69,22 +69,21 @@ fn parse_data(enka: EnkaPlayer) -> anyhow::Result<()> {
     }
     for character in enka.avatarInfoList {
         for item in character.equipList {
-            let flat = item.flat;
-            match item.reliquary { // unwraps here should be covered by the match
-                Some(artifact) => {
+            match item {
+                EquipVariant::Artifact {itemId, reliquary, flat} => {
                     // Test if artifact exists here by iterating over data
                     // Problems to solve: same artifact, same artifact upgraded (+lvl), 2 artifacts of the same type on the same character (?)
                     let mut good_artifact = GoodArtifact {
-                        setKey: LOCALE[&flat.setNameTextMapHash.unwrap()].to_owned(),
-                        slotKey: ENKA[&flat.equipType.unwrap()].to_owned(),
-                        level: artifact.level-1,
+                        setKey: LOCALE[&flat.setNameTextMapHash].to_owned(),
+                        slotKey: ENKA[&flat.equipType].to_owned(),
+                        level: reliquary.level-1,
                         rarity: flat.rankLevel,
-                        mainStatKey: ENKA[&flat.reliquaryMainstat.unwrap().mainPropId].to_owned(),
+                        mainStatKey: ENKA[&flat.reliquaryMainstat.mainPropId].to_owned(),
                         location: CHARACTERS[&character.avatarId.to_string()].to_owned(),
                         substats: vec![],
-                        _id: item.itemId,
+                        _id: itemId,
                     };
-                    for substat in flat.reliquarySubstats.unwrap() {
+                    for substat in flat.reliquarySubstats {
                         good_artifact.substats.push(
                             GoodSubstat {
                                 key: ENKA[&substat.appendPropId].to_owned(),
@@ -94,15 +93,14 @@ fn parse_data(enka: EnkaPlayer) -> anyhow::Result<()> {
                     };
                     data.artifacts.push(good_artifact);
                 },
-                None => { //Codepath for weapon if ever needed
-                    let weapon = item.weapon.unwrap();
+                EquipVariant::Weapon {itemId, weapon, flat} => {
                     let good_weapon = GoodWeapon {
                         key: LOCALE[&flat.nameTextMapHash].to_owned(),
                         level: weapon.level,
                         ascension: weapon.promoteLevel,
-                        refinement: weapon.affixMap[&(item.itemId+100000)]+1,
+                        refinement: weapon.affixMap[&(itemId+100000).to_string()]+1,
                         location: CHARACTERS[&character.avatarId.to_string()].to_owned(),
-                        _id: item.itemId,
+                        _id: itemId,
                     };
                     data.weapons.push(good_weapon);
                 },
