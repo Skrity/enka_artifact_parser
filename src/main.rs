@@ -1,27 +1,30 @@
 /* TODO:
+* Use ttl value to specify refresh cycle
+*? Move tests to different file (needed?)
+* Make reader_function either a impl on struct or generic for any type
+*? possibly download new loc.json altogether
+* Move derive_literal to build.rs for faster runtime
+* think through logic for 1 item on 1 char
+*/
+/* DONE
+*+ Parse weapon
 *+ USE CBOR TO APPEND DATA STRUCTURES AT COMPILE TIME https://www.reddit.com/r/rust/comments/f47h5o/include_json_files_along_with_my_library/
 *+ \ref:convert_enka_to_good_lit change to hashmap
-* Parse weapon (? needed?)
 *+ Parse character to location key of artifact(use the same conversion) https://github.com/Dimbreath/GenshinData/blob/master/ExcelBinOutput/AvatarSkillDepotExcelConfigData.json
-* Pull the previous json to append stuff (handle updating same arts and adding new ones)
-* Use ttl value to specify refresh cycle
 *+ Move everything out of main ( :) )
 *+ Parse file from web, allow user to provide UID
 *+ Save data to nickname-UID.json
-*? Move tests to different file (needed?)
-* Make reader_function either a impl on struct or generic for any type
 *+ Add Build.rs to update loc.cbor when loc.json is updated
-*? possibly download new loc.json altogether
 *+ Move types to a different file (?) https://stackoverflow.com/questions/28010796/move-struct-into-a-separate-file-without-splitting-into-a-separate-module
-* Move derive_literal to build.rs for faster runtime
-*/
+*+ Pull the previous json to append stuff (handle updating same arts and adding new ones)
+ */
 
 #[macro_use]
 extern crate lazy_static;
 
 mod types;
 
-use types::{EnkaPlayer,GoodType,GoodArtifact,GoodSubstat};
+use types::{EnkaPlayer,GoodType,GoodArtifact,GoodSubstat,GoodWeapon};
 use std::collections::HashMap;
 use clap::Parser;
 
@@ -102,7 +105,15 @@ fn parse_data(enka: EnkaPlayer) -> anyhow::Result<()> {
                     data.artifacts.push(good_artifact);
                 },
                 None => { //Codepath for weapon if ever needed
-                    continue
+                    let weapon = item.weapon.unwrap();
+                    let good_weapon = GoodWeapon {
+                        key: derive_literal(LOCALE[&flat.nameTextMapHash].to_owned()),
+                        level: weapon.level,
+                        ascension: weapon.promoteLevel,
+                        refinement: weapon.affixMap[&(item.itemId+100000)]+1,
+                        location: derive_literal(CHARACTERS[&character.avatarId.to_string()].to_owned()),
+                    };
+                    data.weapons.push(good_weapon);
                 },
             }
         }

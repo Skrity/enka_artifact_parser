@@ -29,6 +29,7 @@ pub struct AvatarInfo {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Equip {
     pub itemId: u32,
+    pub weapon: Option<EquipWeapon>,
     pub reliquary: Option<EquipRelic>,
     pub flat: EquipFlat,
 }
@@ -36,6 +37,7 @@ pub struct Equip {
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EquipFlat {
+    pub nameTextMapHash: String,
     pub setNameTextMapHash: Option<String>,
     pub rankLevel: u8,
     pub reliquaryMainstat: Option<RelicMS>,
@@ -47,6 +49,14 @@ pub struct EquipFlat {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EquipRelic {
     pub level: u8,
+}
+
+#[allow(non_snake_case)]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct EquipWeapon {
+    pub level: u8,
+    pub promoteLevel: u8,
+    pub affixMap: std::collections::HashMap<u32,u8>,
 }
 
 #[allow(non_snake_case)]
@@ -71,6 +81,7 @@ pub struct GoodType {
     pub version: u8,
     pub source: String,
     pub artifacts: Vec<GoodArtifact>,
+    pub weapons: Vec<GoodWeapon>,
 }
 
 impl GoodType {
@@ -80,6 +91,7 @@ impl GoodType {
             version: 2,
             source: String::from("enka_artifact_parser"),
             artifacts: vec![],
+            weapons: vec![],
         }
     }
 
@@ -122,4 +134,14 @@ pub struct GoodArtifact {
 pub struct GoodSubstat {
     pub key: String,
     pub value: f64,
+}
+
+#[allow(non_snake_case)]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GoodWeapon {
+    pub key: String,
+    pub level: u8,
+    pub ascension: u8,
+    pub refinement: u8,
+    pub location: String,
 }
