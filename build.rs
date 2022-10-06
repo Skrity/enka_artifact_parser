@@ -14,13 +14,15 @@ fn main() {
     println!("cargo:rerun-if-changed=src/enka.json");
     println!("cargo:rerun-if-changed=src/enka.cbor");
 
-    match write_cbor("src/loc.cbor", &parse_loc_json()["en"]) {
+    test_format_for_good();
+
+    match write_cbor("src/loc.cbor", parse_loc_json("src/loc.json")) {
         Ok(()) => {},
         Err(r) =>
             panic!("Something gone terribly wrong while saving loc.cbor: {:?}", r),
     }
 
-    match write_cbor("src/characters.cbor", parse_characters_json()) {
+    match write_cbor("src/characters.cbor", parse_characters_json("src/characters.json")) {
         Ok(()) => {},
         Err(r) =>
             panic!("Something gone terribly wrong while saving characters.cbor: {:?}", r),
@@ -40,27 +42,31 @@ fn write_cbor<T: serde::Serialize>(path: &str, bar: T) -> Result<(), Box<dyn std
 }
 
 // Please can you make this generic?
-fn parse_loc_json() -> HashMap<String, HashMap<String, String>> {
-    let file = File::open("src/loc.json").unwrap();
+fn parse_loc_json(filename: &str) -> HashMap<String, String> {
+    let file = File::open(filename).unwrap();
     let reader = BufReader::new(file);
     let u: HashMap<String, HashMap<String,String>> = serde_json::from_reader(reader).unwrap();
-    u
+    let mut temp: HashMap<String,String> = HashMap::new();
+    for (key, value) in &u["en"] {
+        temp.insert(key.to_string(),format_for_good(value.to_string()));
+    }
+    temp
 }
 
-fn parse_characters_json() -> HashMap<String, String> {
+// Pre-converted HashMap
+fn parse_characters_json(filename: &str) -> HashMap<String, String> {
     // Read file characters.json into characters var
-    let file = File::open("src/characters.json").unwrap();
+    let file = File::open(filename).unwrap();
     let reader = BufReader::new(file);
     let characters: HashMap<String, CharacterInfo> = serde_json::from_reader(reader).unwrap();
     // Read locale
-    let loc_map: HashMap<String, HashMap<String, String>> = parse_loc_json();
-    let loc_map_en = &loc_map["en"];
+    let loc_map_en: HashMap<String, String> = parse_loc_json("src/loc.json");
     // Resulting HashMap
     let mut out: HashMap<String, String> = HashMap::new();
     for (char, info) in characters {
         match info.NameTextMapHash {
             Some(x) => {
-                out.insert(char, loc_map_en.get(&x.to_string()).unwrap().to_string());
+                out.insert(char, format_for_good(loc_map_en.get(&x.to_string()).unwrap().to_string()));
             },
             None => continue,
         }
@@ -98,8 +104,27 @@ fn create_enka_dict() -> HashMap<&'static str, &'static str> {
     ])
 }
 
+fn format_for_good(input: String) -> String {
+    input
+        .split(" ")
+        .map(|word| format!("{}{}", &word[..1].to_uppercase(), &word[1..]))
+        .collect::<Vec<_>>()
+        .join(" ")
+        .chars()
+        .filter(|c| c.is_alphabetic())
+        .collect()
+}
+
 #[allow(non_snake_case)]
 #[derive(serde::Deserialize)]
 struct CharacterInfo {
     NameTextMapHash: Option<u32>,
+}
+
+fn test_format_for_good() {
+    assert_eq!("GladiatorsFinale", format_for_good("Gladiator's Finale".to_string()));
+    assert_eq!("SpiritLocketOfBoreas", format_for_good("Spirit Locket of Boreas".to_string()));
+    assert_eq!("TheCatch", format_for_good("The Catch".to_string()));
+    assert_eq!("ABDD", format_for_good("'''A b d435 D123/ /'''".to_string()));
+    // Add test for every non-alphabetical symbol
 }

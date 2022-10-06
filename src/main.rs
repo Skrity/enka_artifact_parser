@@ -1,12 +1,13 @@
 /* TODO:
 * Use ttl value to specify refresh cycle
-*? Move tests to different file (needed?)
-* Make reader_function either a impl on struct or generic for any type
-*? possibly download new loc.json altogether
-* Move derive_literal to build.rs for faster runtime
 * think through logic for 1 item on 1 char
+* Possibly Parse Characters (why not lmao?)
+*? Move tests to different file (needed?)
+* Lookup how to implement tests in build.rs
+*? possibly download new loc.json altogether at build time
 */
 /* DONE
+*+ Do derive_literal at build time in build.rs
 *+ Parse weapon
 *+ USE CBOR TO APPEND DATA STRUCTURES AT COMPILE TIME https://www.reddit.com/r/rust/comments/f47h5o/include_json_files_along_with_my_library/
 *+ \ref:convert_enka_to_good_lit change to hashmap
@@ -54,18 +55,8 @@ fn main() {
         Err(e) => panic!("Error parsing Enka response, check your UID. {:?}",e),
     }
 }
-// Consider moving to build.rs for faster runtime
-fn derive_literal(input: String) -> String {
-    input
-        .split(" ")
-        .map(|word| format!("{}{}", &word[..1].to_uppercase(), &word[1..]))
-        .collect::<Vec<_>>()
-        .join(" ")
-        .chars()
-        .filter(|c| c.is_alphabetic())
-        .collect()
-}
 
+// Most of the business logic is here
 fn parse_data(enka: EnkaPlayer) -> anyhow::Result<()> {
     let filename: String = format!("{}-{}.json", enka.playerInfo.nickname, enka.uid);
     let mut data: GoodType;
@@ -79,18 +70,17 @@ fn parse_data(enka: EnkaPlayer) -> anyhow::Result<()> {
     for character in enka.avatarInfoList {
         for item in character.equipList {
             let flat = item.flat;
-            match item.reliquary {
+            match item.reliquary { // unwraps here should be covered by the match
                 Some(artifact) => {
                     // Test if artifact exists here by iterating over data
                     // Problems to solve: same artifact, same artifact upgraded (+lvl), 2 artifacts of the same type on the same character (?)
-                    // unwraps here should be covered by the match above
                     let mut good_artifact = GoodArtifact {
-                        setKey: derive_literal(LOCALE[&flat.setNameTextMapHash.unwrap()].to_owned()),
+                        setKey: LOCALE[&flat.setNameTextMapHash.unwrap()].to_owned(),
                         slotKey: ENKA[&flat.equipType.unwrap()].to_owned(),
                         level: artifact.level-1,
                         rarity: flat.rankLevel,
                         mainStatKey: ENKA[&flat.reliquaryMainstat.unwrap().mainPropId].to_owned(),
-                        location: derive_literal(CHARACTERS[&character.avatarId.to_string()].to_owned()),
+                        location: CHARACTERS[&character.avatarId.to_string()].to_owned(),
                         substats: vec![],
                         _id: item.itemId,
                     };
@@ -107,11 +97,11 @@ fn parse_data(enka: EnkaPlayer) -> anyhow::Result<()> {
                 None => { //Codepath for weapon if ever needed
                     let weapon = item.weapon.unwrap();
                     let good_weapon = GoodWeapon {
-                        key: derive_literal(LOCALE[&flat.nameTextMapHash].to_owned()),
+                        key: LOCALE[&flat.nameTextMapHash].to_owned(),
                         level: weapon.level,
                         ascension: weapon.promoteLevel,
                         refinement: weapon.affixMap[&(item.itemId+100000)]+1,
-                        location: derive_literal(CHARACTERS[&character.avatarId.to_string()].to_owned()),
+                        location: CHARACTERS[&character.avatarId.to_string()].to_owned(),
                         _id: item.itemId,
                     };
                     data.weapons.push(good_weapon);
@@ -131,26 +121,18 @@ fn pull_file(uid: String) -> Result<EnkaPlayer, minreq::Error> {
 mod tests {
     use super::*;
     #[test]
-    fn test_derive_literal() {
-        assert_eq!("GladiatorsFinale", derive_literal("Gladiator's Finale".to_string()));
-        assert_eq!("SpiritLocketOfBoreas", derive_literal("Spirit Locket of Boreas".to_string()));
-        assert_eq!("TheCatch", derive_literal("The Catch".to_string()));
-        assert_eq!("ABDD", derive_literal("'''A b d435 D123/ /'''".to_string()));
-        // Add test for every non-alphabetical symbol
-    }
-    #[test]
     fn test_locale() {
-        assert_eq!(LOCALE["4238339131"], "Staff of the Scarlet Sands");
-        assert_eq!(LOCALE["3914045794"], "Sangonomiya Kokomi");
-        assert_eq!(LOCALE["3782508715"], "Traveling Doctor");
-        assert_eq!(LOCALE["3600623979"], "Hunter's Bow");
+        assert_eq!(LOCALE["4238339131"], "StaffOfTheScarletSands");
+        assert_eq!(LOCALE["3914045794"], "SangonomiyaKokomi");
+        assert_eq!(LOCALE["3782508715"], "TravelingDoctor");
+        assert_eq!(LOCALE["3600623979"], "HuntersBow");
     }
     #[test]
     fn test_characters() {
-        assert_eq!(CHARACTERS["10000002"], "Kamisato Ayaka");
+        assert_eq!(CHARACTERS["10000002"], "KamisatoAyaka");
         assert_eq!(CHARACTERS["10000005"], "Traveler");
         assert_eq!(CHARACTERS["10000053"], "Sayu");
-        assert_eq!(CHARACTERS["10000054"], "Sangonomiya Kokomi");
+        assert_eq!(CHARACTERS["10000054"], "SangonomiyaKokomi");
     }
     #[test]
     fn test_enka() {
