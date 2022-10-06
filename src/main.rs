@@ -26,7 +26,7 @@ extern crate lazy_static;
 
 mod types;
 
-use types::{EnkaPlayer,GoodType,GoodArtifact,GoodSubstat,GoodWeapon,EquipVariant};
+use types::{EnkaPlayer,GoodType,GoodArtifact,GoodSubstat,GoodWeapon,EquipVariant, EquipStatus};
 use std::collections::HashMap;
 use clap::Parser;
 
@@ -61,9 +61,7 @@ fn parse_data(enka: EnkaPlayer) -> anyhow::Result<()> {
     let filename: String = format!("{}-{}.json", enka.playerInfo.nickname, enka.uid);
     let mut data: GoodType;
     if std::path::Path::new(&filename).exists() {
-        // Change when accounted for copy artifacts
-        data = GoodType::new();
-        //data = GoodType::from_file(filename.clone()).unwrap();
+        data = GoodType::from_file(filename.clone()).unwrap();
     } else {
         data = GoodType::new();
     }
@@ -71,8 +69,9 @@ fn parse_data(enka: EnkaPlayer) -> anyhow::Result<()> {
         for item in character.equipList {
             match item {
                 EquipVariant::Artifact {itemId, reliquary, flat} => {
-                    // Test if artifact exists here by iterating over data
-                    // Problems to solve: same artifact, same artifact upgraded (+lvl), 2 artifacts of the same type on the same character (?)
+                    // Problems to solve: 2 artifacts of the same type on the same character, 2 weapons on 1 char (?)
+                    if let EquipStatus::NotChanged(_index) = data.contains_artifact(itemId, reliquary.level-1) { continue }
+                    if let EquipStatus::Changed(index) = data.contains_artifact(itemId, reliquary.level-1) { data.remove_artifact(index) }
                     let mut good_artifact = GoodArtifact {
                         setKey: LOCALE[&flat.setNameTextMapHash].to_owned(),
                         slotKey: ENKA[&flat.equipType].to_owned(),
@@ -94,6 +93,8 @@ fn parse_data(enka: EnkaPlayer) -> anyhow::Result<()> {
                     data.artifacts.push(good_artifact);
                 },
                 EquipVariant::Weapon {itemId, weapon, flat} => {
+                    if let EquipStatus::NotChanged(_index) = data.contains_weapon(itemId, weapon.level) { continue }
+                    if let EquipStatus::Changed(index) = data.contains_weapon(itemId, weapon.level) { data.remove_weapon(index) }
                     let good_weapon = GoodWeapon {
                         key: LOCALE[&flat.nameTextMapHash].to_owned(),
                         level: weapon.level,

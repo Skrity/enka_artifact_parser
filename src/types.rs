@@ -127,6 +127,39 @@ impl GoodType {
         Ok(serde_json::from_reader(reader)?)
     }
 
+    pub fn contains_artifact(&self, id: u32, level: u8) -> EquipStatus {
+        for (index, art) in self.artifacts.iter().enumerate() {
+            if art._id == id {
+                if art.level == level { return EquipStatus::NotChanged(index) }
+                return EquipStatus::Changed(index)
+            }
+        }
+        EquipStatus::NotExists
+    }
+
+    pub fn remove_artifact(&mut self, index: usize) {
+        self.artifacts.swap_remove(index);
+    }
+
+    pub fn contains_weapon(&self, id: u32, level: u8) -> EquipStatus {
+        for (index, wep) in self.weapons.iter().enumerate() {
+            if wep._id == id {
+                if wep.level == level { return EquipStatus::NotChanged(index) }
+                return EquipStatus::Changed(index)
+            }
+        }
+        EquipStatus::NotExists
+    }
+
+    pub fn remove_weapon(&mut self, index: usize) {
+        self.weapons.swap_remove(index);
+    }
+}
+
+pub enum EquipStatus {
+    NotExists,
+    NotChanged(usize),
+    Changed(usize)
 }
 
 #[allow(non_snake_case)]
