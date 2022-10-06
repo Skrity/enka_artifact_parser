@@ -144,4 +144,5 @@ pub struct GoodWeapon {
     pub ascension: u8,
     pub refinement: u8,
     pub location: String,
+    pub _id: u32, //Added for safekeeping
 }

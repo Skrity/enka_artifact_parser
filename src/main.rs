@@ -112,6 +112,7 @@ fn parse_data(enka: EnkaPlayer) -> anyhow::Result<()> {
                         ascension: weapon.promoteLevel,
                         refinement: weapon.affixMap[&(item.itemId+100000)]+1,
                         location: derive_literal(CHARACTERS[&character.avatarId.to_string()].to_owned()),
+                        _id: item.itemId,
                     };
                     data.weapons.push(good_weapon);
                 },
