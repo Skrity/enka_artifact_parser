@@ -1,5 +1,6 @@
 
 use serde::{Deserialize, Serialize};
+use std::collections::{HashSet, HashMap};
 
 // Typify the input format (ENKA) https://api.enka.network/#/api https://github.com/EnkaNetwork/API-docs
 
@@ -30,7 +31,6 @@ pub struct AvatarInfo {
 #[serde(untagged)]
 pub enum EquipVariant {
     Artifact {
-        itemId: u32,
         reliquary: EquipRelic,
         flat: EquipFlatVariantArtifact,
     },
@@ -61,15 +61,19 @@ pub struct EquipRelic {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RelicMS {
     pub mainPropId: String,
-    pub statValue: f64,
+    pub statValue: Substat,
 }
 
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RelicSS {
     pub appendPropId: String,
-    pub statValue: f64,
+    pub statValue: Substat,
 }
+
+#[allow(non_snake_case)]
+#[derive(Serialize, Deserialize, Debug, Hash, Eq, PartialEq)]
+pub struct Substat(serde_json::Number);
 
 // Weapon
 #[allow(non_snake_case)]
@@ -84,7 +88,7 @@ pub struct EquipFlatVariantWeapon {
 pub struct EquipWeapon {
     pub level: u8,
     pub promoteLevel: u8,
-    pub affixMap: std::collections::HashMap<String,u8>,
+    pub affixMap: HashMap<String,u8>,
 }
 // GOOD format description (not complete) https://frzyc.github.io/genshin-optimizer/#/doc
 #[allow(non_snake_case)]
@@ -93,8 +97,8 @@ pub struct GoodType {
     pub format: String,
     pub version: u8,
     pub source: String,
-    pub artifacts: Vec<GoodArtifact>,
-    pub weapons: Vec<GoodWeapon>,
+    pub artifacts: HashSet<GoodArtifact>,
+    pub weapons: HashSet<GoodWeapon>,
 }
 
 impl GoodType {
@@ -103,8 +107,8 @@ impl GoodType {
             format: String::from("GOOD"),
             version: 2,
             source: String::from("enka_artifact_parser"),
-            artifacts: vec![],
-            weapons: vec![],
+            artifacts: HashSet::new(),
+            weapons: HashSet::new(),
         }
     }
 
@@ -127,43 +131,11 @@ impl GoodType {
         Ok(serde_json::from_reader(reader)?)
     }
 
-    pub fn contains_artifact(&self, id: u32, level: u8) -> EquipStatus {
-        for (index, art) in self.artifacts.iter().enumerate() {
-            if art._id == id {
-                if art.level == level { return EquipStatus::NotChanged(index) }
-                return EquipStatus::Changed(index)
-            }
-        }
-        EquipStatus::NotExists
-    }
-
-    pub fn remove_artifact(&mut self, index: usize) {
-        self.artifacts.swap_remove(index);
-    }
-
-    pub fn contains_weapon(&self, id: u32, level: u8) -> EquipStatus {
-        for (index, wep) in self.weapons.iter().enumerate() {
-            if wep._id == id {
-                if wep.level == level { return EquipStatus::NotChanged(index) }
-                return EquipStatus::Changed(index)
-            }
-        }
-        EquipStatus::NotExists
-    }
-
-    pub fn remove_weapon(&mut self, index: usize) {
-        self.weapons.swap_remove(index);
-    }
 }
 
-pub enum EquipStatus {
-    NotExists,
-    NotChanged(usize),
-    Changed(usize)
-}
 
 #[allow(non_snake_case)]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Hash, Eq, PartialEq)]
 pub struct GoodArtifact {
     pub setKey: String,
     pub slotKey: String,
@@ -172,23 +144,21 @@ pub struct GoodArtifact {
     pub mainStatKey: String,
     pub location: String,
     pub substats: Vec<GoodSubstat>,
-    pub _id: u32, //Added for safekeeping
 }
 
 #[allow(non_snake_case)]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Hash, Eq, PartialEq)]
 pub struct GoodSubstat {
     pub key: String,
-    pub value: f64,
+    pub value: Substat,
 }
 
 #[allow(non_snake_case)]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Hash, Eq, PartialEq)]
 pub struct GoodWeapon {
     pub key: String,
     pub level: u8,
     pub ascension: u8,
     pub refinement: u8,
     pub location: String,
-    pub _id: u32, //Added for safekeeping
 }

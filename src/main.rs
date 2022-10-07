@@ -1,10 +1,12 @@
 /* TODO:
 * Use ttl value to specify refresh cycle
-* think through logic for 1 item on 1 char
+* think through logic for 1 item on 1 char (possibly not needed, GO can do dedup by itself)
 * Possibly Parse Characters (why not lmao?)
 *? Move tests to different file (needed?)
 * Lookup how to implement tests in build.rs
 *? possibly download new loc.json altogether at build time
+* refactor types to snake_case #[serde(rename_all = "camelCase")]
+* refactor use %str instead of String, explore zero-cost copy from serde
 */
 /* DONE
 *+ Do derive_literal at build time in build.rs
@@ -19,6 +21,7 @@
 *+ Move types to a different file (?) https://stackoverflow.com/questions/28010796/move-struct-into-a-separate-file-without-splitting-into-a-separate-module
 *+ Pull the previous json to append stuff (handle updating same arts and adding new ones)
 *+ use variants to distignuish weapon and artifact
+*+ try de/serializing vector to hashset
  */
 
 #[macro_use]
@@ -26,7 +29,7 @@ extern crate lazy_static;
 
 mod types;
 
-use types::{EnkaPlayer,GoodType,GoodArtifact,GoodSubstat,GoodWeapon,EquipVariant, EquipStatus};
+use types::{EnkaPlayer, GoodType, GoodArtifact, GoodSubstat, GoodWeapon, EquipVariant};
 use std::collections::HashMap;
 use clap::Parser;
 
@@ -68,10 +71,7 @@ fn parse_data(enka: EnkaPlayer) -> anyhow::Result<()> {
     for character in enka.avatarInfoList {
         for item in character.equipList {
             match item {
-                EquipVariant::Artifact {itemId, reliquary, flat} => {
-                    // Problems to solve: 2 artifacts of the same type on the same character, 2 weapons on 1 char (?)
-                    if let EquipStatus::NotChanged(_index) = data.contains_artifact(itemId, reliquary.level-1) { continue }
-                    if let EquipStatus::Changed(index) = data.contains_artifact(itemId, reliquary.level-1) { data.remove_artifact(index) }
+                EquipVariant::Artifact {reliquary, flat} => {
                     let mut good_artifact = GoodArtifact {
                         setKey: LOCALE[&flat.setNameTextMapHash].to_owned(),
                         slotKey: ENKA[&flat.equipType].to_owned(),
@@ -80,7 +80,6 @@ fn parse_data(enka: EnkaPlayer) -> anyhow::Result<()> {
                         mainStatKey: ENKA[&flat.reliquaryMainstat.mainPropId].to_owned(),
                         location: CHARACTERS[&character.avatarId.to_string()].to_owned(),
                         substats: vec![],
-                        _id: itemId,
                     };
                     for substat in flat.reliquarySubstats {
                         good_artifact.substats.push(
@@ -90,20 +89,17 @@ fn parse_data(enka: EnkaPlayer) -> anyhow::Result<()> {
                             }
                         );
                     };
-                    data.artifacts.push(good_artifact);
+                    data.artifacts.insert(good_artifact);
                 },
                 EquipVariant::Weapon {itemId, weapon, flat} => {
-                    if let EquipStatus::NotChanged(_index) = data.contains_weapon(itemId, weapon.level) { continue }
-                    if let EquipStatus::Changed(index) = data.contains_weapon(itemId, weapon.level) { data.remove_weapon(index) }
                     let good_weapon = GoodWeapon {
                         key: LOCALE[&flat.nameTextMapHash].to_owned(),
                         level: weapon.level,
                         ascension: weapon.promoteLevel,
-                        refinement: weapon.affixMap[&(itemId+100000).to_string()]+1,
+                        refinement: weapon.affixMap[&(itemId+100000).to_string()]+1, //flatten this
                         location: CHARACTERS[&character.avatarId.to_string()].to_owned(),
-                        _id: itemId,
                     };
-                    data.weapons.push(good_weapon);
+                    data.weapons.insert(good_weapon);
                 },
             }
         }
