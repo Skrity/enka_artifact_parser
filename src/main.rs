@@ -1,33 +1,3 @@
-/* TODO:
-* Use ttl value to specify refresh cycle
-*? Move tests to different file (needed?)
-* Lookup how to implement tests in build.rs
-*? possibly download new loc.json altogether at build time
-* refactor use %str instead of String, explore zero-cost copy from serde
-* move good to it's own file
-* change affix map to tuple?
-* handle ctrl+c
-* test EKNA types for nullability, context: promoteLevel fix in this commit
-*/
-/* DONE
-*+ Do derive_literal at build time in build.rs
-*+ Parse weapon
-*+ USE CBOR TO APPEND DATA STRUCTURES AT COMPILE TIME https://www.reddit.com/r/rust/comments/f47h5o/include_json_files_along_with_my_library/
-*+ \ref:convert_enka_to_good_lit change to hashmap
-*+ Parse character to location key of artifact(use the same conversion) https://github.com/Dimbreath/GenshinData/blob/master/ExcelBinOutput/AvatarSkillDepotExcelConfigData.json
-*+ Move everything out of main ( :) )
-*+ Parse file from web, allow user to provide UID
-*+ Save data to nickname-UID.json
-*+ Add Build.rs to update loc.cbor when loc.json is updated
-*+ Move types to a different file (?) https://stackoverflow.com/questions/28010796/move-struct-into-a-separate-file-without-splitting-into-a-separate-module
-*+ Pull the previous json to append stuff (handle updating same arts and adding new ones)
-*+ use variants to distignuish weapon and artifact
-*+ try de/serializing vector to hashset
-*+ refactor types to snake_case #[serde(rename_all = "camelCase")]
-*+ Possibly Parse Characters (why not lmao?)
-*- think through logic for 1 item on 1 char (possibly not needed, GO can do dedup by itself)
- */
-
 #[macro_use]
 extern crate lazy_static;
 
@@ -138,7 +108,7 @@ fn parse_data(enka: EnkaPlayer) -> Result<u8, anyhow::Error> {
                             }
                         );
                     };
-                    data.artifacts.insert(good_artifact);
+                    data.artifacts.replace(good_artifact);
                 },
                 Weapon {item_id, weapon, flat} => {
                     print!(" {}.",LOCALE[&flat.name_text_map_hash]);
@@ -149,7 +119,7 @@ fn parse_data(enka: EnkaPlayer) -> Result<u8, anyhow::Error> {
                         refinement: weapon.affix_map[&(item_id+100000).to_string()]+1, //flatten this
                         location: CHARACTERS[&char_id].good_name.to_owned(),
                     };
-                    data.weapons.insert(good_weapon);
+                    data.weapons.replace(good_weapon);
                 },
             }
         }

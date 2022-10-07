@@ -1,6 +1,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::{HashSet, HashMap};
+use std::hash::{Hash,Hasher};
 
 // Typify the input format (ENKA) https://api.enka.network/#/api https://github.com/EnkaNetwork/API-docs //#[serde(rename_all = "camelCase")]
 
@@ -146,7 +147,7 @@ impl GoodType {
 }
 
 
-#[derive(Serialize, Deserialize, Hash, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct GoodArtifact {
     pub set_key: String,
@@ -158,19 +159,55 @@ pub struct GoodArtifact {
     pub substats: Vec<GoodSubstat>,
 }
 
+impl GoodArtifact {
+    fn key(&self) -> (&String, &String, &u8, &u8, &String, &Vec<GoodSubstat>) {(
+        &self.set_key,
+        &self.slot_key,
+        &self.level,
+        &self.rarity,
+        &self.main_stat_key,
+        &self.substats
+    )}
+}
+
+impl Hash for GoodArtifact {
+    fn hash<H>(&self, state: &mut H) where H: Hasher { self.key().hash(state); }
+}
+
+impl PartialEq for GoodArtifact {
+    fn eq(&self, other: &Self) -> bool { self.key() == other.key() }
+}
+
 #[derive(Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub struct GoodSubstat {
     pub key: String,
     pub value: Substat,
 }
 
-#[derive(Serialize, Deserialize, Hash, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq)]
 pub struct GoodWeapon {
     pub key: String,
     pub level: u8,
     pub ascension: u8,
     pub refinement: u8,
     pub location: String,
+}
+
+impl GoodWeapon {
+    fn key(&self) -> (&String, &u8, &u8, &u8) {(
+        &self.key,
+        &self.level,
+        &self.ascension,
+        &self.refinement,
+    )}
+}
+
+impl Hash for GoodWeapon {
+    fn hash<H>(&self, state: &mut H) where H: Hasher { self.key().hash(state); }
+}
+
+impl PartialEq for GoodWeapon {
+    fn eq(&self, other: &Self) -> bool { self.key() == other.key() }
 }
 
 #[derive(Serialize, Deserialize, Hash, Eq, PartialEq)]

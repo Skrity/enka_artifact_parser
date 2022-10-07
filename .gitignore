@@ -2,3 +2,4 @@
 /*.json
 /src/temp.json
 /src/*.cbor
+*.bak
