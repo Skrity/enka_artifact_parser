@@ -5,7 +5,6 @@
 *? Move tests to different file (needed?)
 * Lookup how to implement tests in build.rs
 *? possibly download new loc.json altogether at build time
-* refactor types to snake_case #[serde(rename_all = "camelCase")]
 * refactor use %str instead of String, explore zero-cost copy from serde
 */
 /* DONE
@@ -22,6 +21,7 @@
 *+ Pull the previous json to append stuff (handle updating same arts and adding new ones)
 *+ use variants to distignuish weapon and artifact
 *+ try de/serializing vector to hashset
+*+ refactor types to snake_case #[serde(rename_all = "camelCase")]
  */
 
 #[macro_use]
@@ -61,43 +61,43 @@ fn main() {
 
 // Most of the business logic is here
 fn parse_data(enka: EnkaPlayer) -> anyhow::Result<()> {
-    let filename: String = format!("{}-{}.json", enka.playerInfo.nickname, enka.uid);
+    let filename: String = format!("{}-{}.json", enka.player_info.nickname, enka.uid);
     let mut data: GoodType;
     if std::path::Path::new(&filename).exists() {
         data = GoodType::from_file(filename.clone()).unwrap();
     } else {
         data = GoodType::new();
     }
-    for character in enka.avatarInfoList {
-        for item in character.equipList {
+    for character in enka.avatar_info_list {
+        for item in character.equip_list {
             match item {
                 EquipVariant::Artifact {reliquary, flat} => {
                     let mut good_artifact = GoodArtifact {
-                        setKey: LOCALE[&flat.setNameTextMapHash].to_owned(),
-                        slotKey: ENKA[&flat.equipType].to_owned(),
+                        set_key: LOCALE[&flat.set_name_text_map_hash].to_owned(),
+                        slot_key: ENKA[&flat.equip_type].to_owned(),
                         level: reliquary.level-1,
-                        rarity: flat.rankLevel,
-                        mainStatKey: ENKA[&flat.reliquaryMainstat.mainPropId].to_owned(),
-                        location: CHARACTERS[&character.avatarId.to_string()].to_owned(),
+                        rarity: flat.rank_level,
+                        main_stat_key: ENKA[&flat.reliquary_mainstat.main_prop_id].to_owned(),
+                        location: CHARACTERS[&character.avatar_id.to_string()].to_owned(),
                         substats: vec![],
                     };
-                    for substat in flat.reliquarySubstats {
+                    for substat in flat.reliquary_substats {
                         good_artifact.substats.push(
                             GoodSubstat {
-                                key: ENKA[&substat.appendPropId].to_owned(),
-                                value: substat.statValue,
+                                key: ENKA[&substat.append_prop_id].to_owned(),
+                                value: substat.stat_value,
                             }
                         );
                     };
                     data.artifacts.insert(good_artifact);
                 },
-                EquipVariant::Weapon {itemId, weapon, flat} => {
+                EquipVariant::Weapon {item_id, weapon, flat} => {
                     let good_weapon = GoodWeapon {
-                        key: LOCALE[&flat.nameTextMapHash].to_owned(),
+                        key: LOCALE[&flat.name_text_map_hash].to_owned(),
                         level: weapon.level,
-                        ascension: weapon.promoteLevel,
-                        refinement: weapon.affixMap[&(itemId+100000).to_string()]+1, //flatten this
-                        location: CHARACTERS[&character.avatarId.to_string()].to_owned(),
+                        ascension: weapon.promote_level,
+                        refinement: weapon.affix_map[&(item_id+100000).to_string()]+1, //flatten this
+                        location: CHARACTERS[&character.avatar_id.to_string()].to_owned(),
                     };
                     data.weapons.insert(good_weapon);
                 },

@@ -2,31 +2,29 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{HashSet, HashMap};
 
-// Typify the input format (ENKA) https://api.enka.network/#/api https://github.com/EnkaNetwork/API-docs
+// Typify the input format (ENKA) https://api.enka.network/#/api https://github.com/EnkaNetwork/API-docs //#[serde(rename_all = "camelCase")]
 
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct EnkaPlayer {
-    pub playerInfo: PlayerInfo,
-    pub avatarInfoList: Vec<AvatarInfo>,
+    pub player_info: PlayerInfo,
+    pub avatar_info_list: Vec<AvatarInfo>,
     pub ttl: u8,
     pub uid: String,
 }
 
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PlayerInfo {
     pub nickname: String,
 }
 
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct AvatarInfo {
-    pub avatarId: u32,
-    pub equipList: Vec<EquipVariant>,
+    pub avatar_id: u32,
+    pub equip_list: Vec<EquipVariant>,
 }
 
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(untagged)]
 pub enum EquipVariant {
@@ -34,64 +32,62 @@ pub enum EquipVariant {
         reliquary: EquipRelic,
         flat: EquipFlatVariantArtifact,
     },
+    #[serde(rename_all = "camelCase")]
     Weapon {
-        itemId: u32,
+        item_id: u32,
         weapon: EquipWeapon,
         flat: EquipFlatVariantWeapon,
     },
 }
 // Artifact
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct EquipFlatVariantArtifact {
-    pub setNameTextMapHash: String,
-    pub rankLevel: u8,
-    pub reliquaryMainstat: RelicMS,
-    pub reliquarySubstats: Vec<RelicSS>,
-    pub equipType: String,
+    pub set_name_text_map_hash: String,
+    pub rank_level: u8,
+    pub reliquary_mainstat: RelicMS,
+    pub reliquary_substats: Vec<RelicSS>,
+    pub equip_type: String,
 }
 
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EquipRelic {
     pub level: u8,
 }
 
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct RelicMS {
-    pub mainPropId: String,
-    pub statValue: Substat,
+    pub main_prop_id: String,
+    pub stat_value: Substat,
 }
 
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct RelicSS {
-    pub appendPropId: String,
-    pub statValue: Substat,
+    pub append_prop_id: String,
+    pub stat_value: Substat,
 }
 
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug, Hash, Eq, PartialEq)]
 pub struct Substat(serde_json::Number);
 
 // Weapon
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct EquipFlatVariantWeapon {
-    pub nameTextMapHash: String,
-    pub rankLevel: u8,
+    pub name_text_map_hash: String,
+    pub rank_level: u8,
 }
 
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct EquipWeapon {
     pub level: u8,
-    pub promoteLevel: u8,
-    pub affixMap: HashMap<String,u8>,
+    pub promote_level: u8,
+    pub affix_map: HashMap<String,u8>,
 }
 // GOOD format description (not complete) https://frzyc.github.io/genshin-optimizer/#/doc
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GoodType {
     pub format: String,
@@ -134,26 +130,24 @@ impl GoodType {
 }
 
 
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug, Hash, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct GoodArtifact {
-    pub setKey: String,
-    pub slotKey: String,
+    pub set_key: String,
+    pub slot_key: String,
     pub level: u8,
     pub rarity: u8,
-    pub mainStatKey: String,
+    pub main_stat_key: String,
     pub location: String,
     pub substats: Vec<GoodSubstat>,
 }
 
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug, Hash, Eq, PartialEq)]
 pub struct GoodSubstat {
     pub key: String,
     pub value: Substat,
 }
 
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug, Hash, Eq, PartialEq)]
 pub struct GoodWeapon {
     pub key: String,
