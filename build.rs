@@ -54,7 +54,7 @@ fn parse_loc_json(filename: &str) -> HashMap<String, String> {
 }
 
 // Pre-converted HashMap
-fn parse_characters_json(filename: &str) -> HashMap<String, String> {
+fn parse_characters_json(filename: &str) -> HashMap<String, CharData> {
     // Read file characters.json into characters var
     let file = File::open(filename).unwrap();
     let reader = BufReader::new(file);
@@ -62,11 +62,14 @@ fn parse_characters_json(filename: &str) -> HashMap<String, String> {
     // Read locale
     let loc_map_en: HashMap<String, String> = parse_loc_json("src/loc.json");
     // Resulting HashMap
-    let mut out: HashMap<String, String> = HashMap::new();
+    let mut out: HashMap<String, CharData> = HashMap::new();
     for (char, info) in characters {
         match info.NameTextMapHash {
             Some(x) => {
-                out.insert(char, format_for_good(loc_map_en.get(&x.to_string()).unwrap().to_string()));
+                out.insert(char, CharData {
+                    good_name: format_for_good(loc_map_en.get(&x.to_string()).unwrap().to_string()),
+                    skill_order: info.SkillOrder.unwrap(),
+                });
             },
             None => continue,
         }
@@ -118,7 +121,14 @@ fn format_for_good(input: String) -> String {
 #[allow(non_snake_case)]
 #[derive(serde::Deserialize)]
 struct CharacterInfo {
+    SkillOrder: Option<(u32, u32, u32)>,
     NameTextMapHash: Option<u32>,
+}
+
+#[derive(serde::Serialize)]
+struct CharData {
+    good_name: String,
+    skill_order: (u32, u32, u32),
 }
 
 fn test_format_for_good() {
