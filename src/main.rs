@@ -5,6 +5,9 @@
 *? possibly download new loc.json altogether at build time
 * refactor use %str instead of String, explore zero-cost copy from serde
 * move good to it's own file
+* change affix map to tuple?
+* handle ctrl+c
+* test EKNA types for nullability, context: promoteLevel fix in this commit
 */
 /* DONE
 *+ Do derive_literal at build time in build.rs
@@ -142,7 +145,7 @@ fn parse_data(enka: EnkaPlayer) -> Result<u8, anyhow::Error> {
                     let good_weapon = GoodWeapon {
                         key: LOCALE[&flat.name_text_map_hash].to_owned(),
                         level: weapon.level,
-                        ascension: weapon.promote_level,
+                        ascension: weapon.promote_level.unwrap_or(0),
                         refinement: weapon.affix_map[&(item_id+100000).to_string()]+1, //flatten this
                         location: CHARACTERS[&char_id].good_name.to_owned(),
                     };

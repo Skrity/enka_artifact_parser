@@ -98,7 +98,7 @@ pub struct EquipFlatVariantWeapon {
 #[serde(rename_all = "camelCase")]
 pub struct EquipWeapon {
     pub level: u8,
-    pub promote_level: u8,
+    pub promote_level: Option<u8>,
     pub affix_map: HashMap<String,u8>,
 }
 // GOOD format description (not complete) https://frzyc.github.io/genshin-optimizer/#/doc
