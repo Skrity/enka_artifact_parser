@@ -2,16 +2,22 @@
 
     This is a TODO, deal with it.
 
-## Tasks
+## Main
 
 - [?] Move tests to different file (needed?)
-- [ ] Lookup how to implement tests in build.rs
-- [?] Possibly download new loc.json altogether at build time
-- [ ] Refactor use %str instead of String, explore zero-cost copy from serde
-- [ ] Move GOOD to it's own file
-- [?] Change affix map to tuple
 - [ ] Handle ctrl+c
 - [ ] Test ENKA types for nullability, context: promoteLevel fix in this commit
+
+## Types
+
+- [ ] Move GOOD to it's own file
+- [?] Change affix map to tuple
+- [ ] Refactor: use %str instead of String, explore zero-cost copy from serde
+
+## Build
+
+- [ ] Lookup how to implement tests in build.rs
+- [?] Possibly download new loc.json altogether at build time
 
 # DONE
 

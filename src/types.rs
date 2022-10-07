@@ -2,6 +2,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{HashSet, HashMap};
 use std::hash::{Hash,Hasher};
+use anyhow::Result;
 
 // Typify the input format (ENKA) https://api.enka.network/#/api https://github.com/EnkaNetwork/API-docs //#[serde(rename_all = "camelCase")]
 
@@ -125,7 +126,7 @@ impl GoodType {
         }
     }
 
-    pub fn to_file(&self, filename: String) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn to_file(&self, filename: String) -> Result<()> {
         use std::fs::File;
         use std::io::Write;
 
@@ -135,7 +136,7 @@ impl GoodType {
         Ok(())
     }
 
-    pub fn from_file(filename: String) -> Result<GoodType, Box<dyn std::error::Error>> {
+    pub fn from_file(filename: String) -> Result<GoodType> {
         use std::fs::File;
         use std::io::BufReader;
 

@@ -2,6 +2,7 @@
 
 ### Running changes
 
+- Changed Result to Anyhow, errors should be prettier now, should remove those pesky unwraps.
 - Implemented Hash function for GoodArtifact and GoodWeapon, now it ignores location \
 (same artifact now won't appear twice if seen on a different characters)
 - Added TODO.md & CHANGELOG.md to repo

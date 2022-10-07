@@ -16,6 +16,7 @@ use types::{
 };
 use std::collections::HashMap;
 use clap::Parser;
+use anyhow::{Result,Context};
 
 #[derive(Parser)]
 #[command(name = "Enka Artifact Parser")]
@@ -29,6 +30,7 @@ struct Args {
 }
 
 lazy_static! {
+    // Unwraps here should succeed, this should be guaranteed by build.rs
     static ref LOCALE: HashMap<String, String> =
         serde_cbor::from_slice(include_bytes!("loc.cbor"))
         .unwrap();
@@ -49,21 +51,21 @@ fn main() {
                 println!("Sleeping for {} seconds.",ttl);
                 std::thread::sleep(std::time::Duration::from_secs(ttl.into()));
             },
-            Err(e) =>
-                panic!("Error parsing Enka response, check your UID. {:?}",e),
+            Err(err) =>
+                panic!("Couldn't properly parse Enka response. Debugging info follows:\n{:?}",err),
         }
     }
 }
 
 // Most of the business logic is here
-fn parse_data(enka: EnkaPlayer) -> Result<u8, anyhow::Error> {
+fn parse_data(enka: EnkaPlayer) -> anyhow::Result<u8> {
     let filename: String = format!("{}-{}.json", enka.player_info.nickname, enka.uid);
     println!("Found account: {}, using file: {}.", enka.player_info.nickname, filename);
     let mut data: GoodType;
     if std::path::Path::new(&filename).exists() {
         println!("Found existing file {}, trying to append.",filename);
         println!("This can go wrong if program version changed.");
-        data = GoodType::from_file(filename.clone()).unwrap();
+        data = GoodType::from_file(filename.clone()).context("Error while reading old file.")?;
     } else {
         println!("File {} not found, creating one.",filename);
         data = GoodType::new();
@@ -78,13 +80,18 @@ fn parse_data(enka: EnkaPlayer) -> Result<u8, anyhow::Error> {
         print!("Found character {}:",CHARACTERS[&char_id].good_name);
         data.characters.insert(GoodCharacter {
             key: CHARACTERS[&char_id].good_name.to_owned(),
-            level: character.prop_map.level.val.parse::<u8>().unwrap(),
+            level: character.prop_map.level.val.parse::<u8>()
+                .context("Error while converting character level into u8")?,
             constellation: character.talent_id_list.unwrap_or(vec![]).len() as u8,
-            ascension: character.prop_map.ascension.val.parse::<u8>().unwrap(),
+            ascension: character.prop_map.ascension.val.parse::<u8>()
+                .context("Error while converting character ascension into u8")?,
             talent: GoodTalents {
-                auto: character.skill_level_map[&CHARACTERS[&talents_id].skill_order.0.to_string()],
-                skill: character.skill_level_map[&CHARACTERS[&talents_id].skill_order.1.to_string()],
-                burst: character.skill_level_map[&CHARACTERS[&talents_id].skill_order.2.to_string()],
+                auto:
+                    character.skill_level_map[&CHARACTERS[&talents_id].skill_order.0.to_string()],
+                skill:
+                    character.skill_level_map[&CHARACTERS[&talents_id].skill_order.1.to_string()],
+                burst:
+                    character.skill_level_map[&CHARACTERS[&talents_id].skill_order.2.to_string()],
             },
         });
         for item in character.equip_list {
@@ -116,7 +123,7 @@ fn parse_data(enka: EnkaPlayer) -> Result<u8, anyhow::Error> {
                         key: LOCALE[&flat.name_text_map_hash].to_owned(),
                         level: weapon.level,
                         ascension: weapon.promote_level.unwrap_or(0),
-                        refinement: weapon.affix_map[&(item_id+100000).to_string()]+1, //flatten this
+                        refinement: weapon.affix_map[&(item_id+100000).to_string()]+1,
                         location: CHARACTERS[&char_id].good_name.to_owned(),
                     };
                     data.weapons.replace(good_weapon);
@@ -125,12 +132,16 @@ fn parse_data(enka: EnkaPlayer) -> Result<u8, anyhow::Error> {
         }
         println!();
     };
-    data.to_file(filename).unwrap();
+    data.to_file(filename)?;
     Ok(enka.ttl)
 }
 
-fn pull_file(uid: String) -> Result<EnkaPlayer, minreq::Error> {
-    Ok(minreq::get(format!("https://enka.network/u/{}/__data.json", uid)).send()?.json()?)
+fn pull_file(uid: String) -> Result<EnkaPlayer> {
+    Ok(
+        minreq::get(format!("https://enka.network/u/{}/__data.json", uid))
+            .send().context("Error while doing HTTP GET")?
+            .json().context("Error while parsing JSON response")?
+    )
 }
 
 #[cfg(test)]
