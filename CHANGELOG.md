@@ -2,6 +2,9 @@
 
 ## Running changes
 
+- covered recoverable errors in match statements
+- remove Indexing everywhere in favour of get()
+- use phf_map instead of CBOR
 - moved GOOD into it's own file, referenced cargo.toml version etc
 - Changed Result to Anyhow, errors should be prettier now, should remove those pesky unwraps.
 - Implemented Hash function for GoodArtifact and GoodWeapon, now it ignores location \

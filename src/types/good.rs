@@ -82,7 +82,7 @@ impl PartialEq for GoodArtifact {
 #[derive(Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub struct GoodSubstat {
     pub key: String,
-    pub value: Substat,
+    pub value: serde_json::Number,
 }
 
 #[derive(Serialize, Deserialize, Eq)]
@@ -127,6 +127,3 @@ pub struct GoodTalents {
     pub skill: u8,
     pub burst: u8,
 }
-
-#[derive(Serialize, Deserialize, Hash, Eq, PartialEq)]
-pub struct Substat(serde_json::Number); //Also used in ENKA

@@ -4,20 +4,19 @@
 
 ## Main
 
-- [?] Move tests to different file (needed?)
 - [ ] Handle ctrl+c
 - [ ] Test ENKA types for nullability, context: promoteLevel fix in this commit
-- [ ] Use phf instead of static_lazy
 
 ## Types
 
-- [?] Change affix map to tuple
-- [ ] Refactor: use str instead of String, explore zero-cost copy from serde
+- [ ] Refactor: use str instead of String
+- [ ] Explore zero-cost copy from serde
 
 ## Build
 
+- [ ] Cleanup, refactor
 - [ ] Lookup how to implement tests in build.rs
-- [?] Possibly download new loc.json altogether at build time
+- [ ] Download new loc.json altogether at build time
 
 ## DONE
 
@@ -45,3 +44,6 @@
 - [x] Create TODO.md
 - [x] Move todo from main.rs
 - [x] Move GOOD to it's own file
+- [-] Change affix map to tuple
+- [+] Use phf instead of static_lazy
+- [-] Move tests to different file (needed?)

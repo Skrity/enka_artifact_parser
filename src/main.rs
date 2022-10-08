@@ -1,15 +1,17 @@
-#[macro_use]
-extern crate lazy_static;
-
 mod types;
 
 use types::{
     EnkaPlayer,
     EquipVariant::{Artifact, Weapon},
-    good::{GoodType, GoodArtifact, GoodSubstat, GoodWeapon, GoodCharacter, GoodTalents},
-    CharData,
+    good::{
+        GoodType,
+        GoodArtifact,
+        GoodSubstat,
+        GoodWeapon,
+        GoodCharacter,
+        GoodTalents
+    },
 };
-use std::collections::HashMap;
 use clap::Parser;
 use anyhow::{Result,Context};
 
@@ -23,23 +25,12 @@ struct Args {
    uid: String,
 }
 
-lazy_static! {
-    // Unwraps here should succeed, this should be guaranteed by build.rs
-    static ref LOCALE: HashMap<String, String> =
-        serde_cbor::from_slice(include_bytes!("loc.cbor"))
-        .unwrap();
-    static ref CHARACTERS: HashMap<String, CharData> =
-        serde_cbor::from_slice(include_bytes!("characters.cbor"))
-        .unwrap();
-    static ref ENKA: HashMap<String, String> =
-        serde_cbor::from_slice(include_bytes!("enka.cbor"))
-        .unwrap();
-    static ref ARGS: Args = Args::parse();
-}
+// Contains pre-generated maps of data: loc.json, characters.json, enka stuff
+include!(concat!(env!("OUT_DIR"), "/codegen.rs"));
 
 fn main() {
     loop {
-        match pull_file(ARGS.uid.to_string()) {
+        match pull_file(Args::parse().uid) {
             Ok(player) => {
                 let ttl = parse_data(player).unwrap_or(120)+1;
                 println!("Sleeping for {} seconds.",ttl);
@@ -51,76 +42,108 @@ fn main() {
     }
 }
 
-// Most of the business logic is here
-fn parse_data(enka: EnkaPlayer) -> anyhow::Result<u8> {
+// Most of the business logic is here, returns TTL wrapped in Result
+fn parse_data(enka: EnkaPlayer) -> Result<u8> {
     let filename: String = format!("{}-{}.json", enka.player_info.nickname, enka.uid);
     println!("Found account: {}, using file: {}.", enka.player_info.nickname, filename);
     let mut data: GoodType;
     if std::path::Path::new(&filename).exists() {
-        println!("Found existing file {}, trying to append.",filename);
+        println!("Found existing file {}, trying to append.", filename);
         println!("This can go wrong if program version changed.");
-        data = GoodType::from_file(filename.clone()).context("Error while reading old file.")?;
+        data = GoodType::from_file(filename.clone())
+            .context("Error while reading old file.")?;
     } else {
         println!("File {} not found, creating one.",filename);
         data = GoodType::new();
     }
     for character in enka.avatar_info_list {
-        let char_id = character.avatar_id.to_string();
-        let talents_id = if "10000005" == char_id { // Workaround for Traveler
-            format!("{}-{}",char_id.to_owned(),character.skill_depot_id)
-        } else {
-            char_id.to_owned()
-        };
-        print!("Found character {}:",CHARACTERS[&char_id].good_name);
-        data.characters.insert(GoodCharacter {
-            key: CHARACTERS[&char_id].good_name.to_owned(),
-            level: character.prop_map.level.val.parse::<u8>()
-                .context("Error while converting character level into u8")?,
-            constellation: character.talent_id_list.unwrap_or(vec![]).len() as u8,
-            ascension: character.prop_map.ascension.val.parse::<u8>()
-                .context("Error while converting character ascension into u8")?,
-            talent: GoodTalents {
-                auto:
-                    character.skill_level_map[&CHARACTERS[&talents_id].skill_order.0.to_string()],
-                skill:
-                    character.skill_level_map[&CHARACTERS[&talents_id].skill_order.1.to_string()],
-                burst:
-                    character.skill_level_map[&CHARACTERS[&talents_id].skill_order.2.to_string()],
+        let char_name = DICT.get(&character.avatar_id.to_string());
+        let talent_ids = *SKILLS.get(
+            if 10000005 == character.avatar_id { // Workaround for Traveler
+                    format!("{}-{}", character.avatar_id, character.skill_depot_id)
+                } else {
+                    character.avatar_id.to_string()
+                }.as_str()
+            ).context("Character not found in skill order list.")?;
+        match char_name {
+            Some(char) => {
+                print!("Found character {}:", char);
+                data.characters.insert(GoodCharacter {
+                    key: char.to_string(),
+                    level: character.prop_map.level.val // Assumed nullable
+                        .unwrap_or("1".to_string())
+                        .parse::<u8>()
+                        .context("Error while converting character level into u8")?,
+                    constellation: character.talent_id_list // Assumed nullable
+                        .unwrap_or(vec![])
+                        .len() as u8,
+                    ascension: character.prop_map.ascension.val // Assumed nullable
+                        .unwrap_or("0".to_string())
+                        .parse::<u8>()
+                        .context("Error while converting character ascension into u8")?,
+                    talent: GoodTalents {
+                        auto:  *character.skill_level_map.get(&talent_ids.0.to_string())
+                            .unwrap_or(&1),
+                        skill: *character.skill_level_map.get(&talent_ids.1.to_string())
+                            .unwrap_or(&1),
+                        burst: *character.skill_level_map.get(&talent_ids.2.to_string())
+                            .unwrap_or(&1),
+                    },
+                });
             },
-        });
+            None => print!("Found unknown character:"),
+        }
         for item in character.equip_list {
             match item {
                 Artifact {reliquary, flat} => {
-                    print!(" {},",LOCALE[&flat.set_name_text_map_hash]);
-                    let mut good_artifact = GoodArtifact {
-                        set_key: LOCALE[&flat.set_name_text_map_hash].to_owned(),
-                        slot_key: ENKA[&flat.equip_type].to_owned(),
-                        level: reliquary.level-1,
-                        rarity: flat.rank_level,
-                        main_stat_key: ENKA[&flat.reliquary_mainstat.main_prop_id].to_owned(),
-                        location: CHARACTERS[&char_id].good_name.to_owned(),
-                        substats: vec![],
-                    };
-                    for substat in flat.reliquary_substats {
-                        good_artifact.substats.push(
-                            GoodSubstat {
-                                key: ENKA[&substat.append_prop_id].to_owned(),
-                                value: substat.stat_value,
-                            }
-                        );
-                    };
-                    data.artifacts.replace(good_artifact);
+                    match DICT.get(&flat.set_name_text_map_hash) {
+                        Some (art_name) => {
+                            print!(" {},", art_name.to_string());
+                            let mut good_artifact = GoodArtifact {
+                                set_key: art_name.to_string().to_owned(),
+                                slot_key: DICT.get(&flat.equip_type)
+                                    .context("Slot not found in dictionary.")?
+                                    .to_string(),
+                                level: reliquary.level-1,
+                                rarity: flat.rank_level,
+                                main_stat_key: DICT.get(&flat.reliquary_mainstat.main_prop_id)
+                                    .context("Main stat not found in dictionary.")?
+                                    .to_string(),
+                                location: char_name.unwrap_or(&"").to_string(),
+                                substats: vec![],
+                            };
+                            for substat in flat.reliquary_substats {
+                                good_artifact.substats.push(
+                                    GoodSubstat {
+                                        key: DICT.get(&substat.append_prop_id)
+                                        .context("Sub stat not found in dictionary.")?
+                                        .to_string(),
+                                        value: substat.stat_value,
+                                    }
+                                );
+                            };
+                            data.artifacts.replace(good_artifact);
+                        },
+                        None => print!(" UnknownArtifact,"),
+                    }
                 },
-                Weapon {item_id, weapon, flat} => {
-                    print!(" {}.",LOCALE[&flat.name_text_map_hash]);
-                    let good_weapon = GoodWeapon {
-                        key: LOCALE[&flat.name_text_map_hash].to_owned(),
-                        level: weapon.level,
-                        ascension: weapon.promote_level.unwrap_or(0),
-                        refinement: weapon.affix_map[&(item_id+100000).to_string()]+1,
-                        location: CHARACTERS[&char_id].good_name.to_owned(),
-                    };
-                    data.weapons.replace(good_weapon);
+                Weapon {weapon, flat} => {
+                    match DICT.get(&flat.name_text_map_hash) {
+                        Some(wep_name) => {
+                            print!(" {}.", wep_name);
+                            let good_weapon = GoodWeapon {
+                                key: wep_name.to_string(),
+                                level: weapon.level,
+                                ascension: weapon.promote_level.unwrap_or(0), // Can be null
+                                refinement: 1 + *Vec::from_iter(weapon.affix_map.values())
+                                                .pop()
+                                                .unwrap_or(&0), // Assumed nullable
+                                location: char_name.unwrap_or(&"").to_string(),
+                            };
+                            data.weapons.replace(good_weapon);
+                        },
+                        None => print!(" UnknownWeapon."),
+                    }
                 },
             }
         }
@@ -133,33 +156,9 @@ fn parse_data(enka: EnkaPlayer) -> anyhow::Result<u8> {
 fn pull_file(uid: String) -> Result<EnkaPlayer> {
     Ok(
         minreq::get(format!("https://enka.network/u/{}/__data.json", uid))
-            .send().context("Error while doing HTTP GET")?
-            .json().context("Error while parsing JSON response")?
+            .send()
+            .context("Error while doing HTTP GET")?
+            .json()
+            .context("Error while parsing JSON response")?
     )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_locale() {
-        assert_eq!(LOCALE["4238339131"], "StaffOfTheScarletSands");
-        assert_eq!(LOCALE["3914045794"], "SangonomiyaKokomi");
-        assert_eq!(LOCALE["3782508715"], "TravelingDoctor");
-        assert_eq!(LOCALE["3600623979"], "HuntersBow");
-    }
-    #[test]
-    fn test_characters() {
-        assert_eq!(CHARACTERS["10000002"].good_name, "KamisatoAyaka");
-        assert_eq!(CHARACTERS["10000005"].good_name, "Traveler");
-        assert_eq!(CHARACTERS["10000053"].good_name, "Sayu");
-        assert_eq!(CHARACTERS["10000054"].good_name, "SangonomiyaKokomi");
-    }
-    #[test]
-    fn test_enka() {
-        assert_eq!(ENKA["FIGHT_PROP_HP_PERCENT"],       "hp_");
-        assert_eq!(ENKA["FIGHT_PROP_ROCK_ADD_HURT"],    "geo_dmg_");
-        assert_eq!(ENKA["EQUIP_DRESS"],                 "circlet");
-        assert_eq!(ENKA["EQUIP_BRACER"],                "flower");
-    }
 }

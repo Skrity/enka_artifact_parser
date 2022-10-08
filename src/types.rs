@@ -1,7 +1,6 @@
 
 use serde::Deserialize;
 use std::collections::HashMap;
-use good::Substat;
 
 pub mod good;
 // Typify the input format (ENKA)
@@ -42,7 +41,7 @@ pub struct AvatarProps {
 
 #[derive(Deserialize)]
 pub struct Prop {
-    pub val: String,
+    pub val: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -52,9 +51,7 @@ pub enum EquipVariant {
         reliquary: EquipRelic,
         flat: EquipFlatVariantArtifact,
     },
-    #[serde(rename_all = "camelCase")]
     Weapon {
-        item_id: u32,
         weapon: EquipWeapon,
         flat: EquipFlatVariantWeapon,
     },
@@ -79,14 +76,14 @@ pub struct EquipRelic {
 #[serde(rename_all = "camelCase")]
 pub struct RelicMS {
     pub main_prop_id: String,
-    pub stat_value: Substat,
+    pub stat_value: serde_json::Number,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RelicSS {
     pub append_prop_id: String,
-    pub stat_value: Substat,
+    pub stat_value: serde_json::Number,
 }
 
 // Weapon
@@ -103,11 +100,4 @@ pub struct EquipWeapon {
     pub level: u8,
     pub promote_level: Option<u8>,
     pub affix_map: HashMap<String,u8>,
-}
-
-// Type of data for compile-time hashmaps, copied from build.rs
-#[derive(Deserialize)]
-pub struct CharData {
-    pub good_name: String,
-    pub skill_order: (u32, u32, u32),
 }

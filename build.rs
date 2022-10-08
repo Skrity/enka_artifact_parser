@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, BufWriter, Write};
+use std::path::Path;
+use std::env;
 
 // Also you can pull jsons from github
 // https://raw.githubusercontent.com/EnkaNetwork/API-docs/master/store/loc.json
@@ -8,37 +10,46 @@ use std::io::BufReader;
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=src/loc.json");
-    println!("cargo:rerun-if-changed=src/loc.cbor");
     println!("cargo:rerun-if-changed=src/characters.json");
-    println!("cargo:rerun-if-changed=src/characters.cbor");
-    println!("cargo:rerun-if-changed=src/enka.json");
-    println!("cargo:rerun-if-changed=src/enka.cbor");
 
     test_format_for_good();
 
-    match write_cbor("src/loc.cbor", parse_loc_json("src/loc.json")) {
-        Ok(()) => {},
-        Err(r) =>
-            panic!("Something gone terribly wrong while saving loc.cbor: {:?}", r),
+    let mut locale = parse_loc_json("src/loc.json");
+    let mut skill_order: HashMap<String, (u32, u32, u32)> = HashMap::new();
+    for (k, v) in create_enka_dict() {
+        locale.insert(k.to_owned(), v.to_owned());
+    }
+    let char_json = parse_characters_json("src/characters.json");
+    for (k, v) in char_json {
+        locale.insert(k.to_owned(), v.0);
+        skill_order.insert(k, (v.1, v.2, v.3));
     }
 
-    match write_cbor("src/characters.cbor", parse_characters_json("src/characters.json")) {
-        Ok(()) => {},
-        Err(r) =>
-            panic!("Something gone terribly wrong while saving characters.cbor: {:?}", r),
-    }
+    let path = Path::new(&env::var("OUT_DIR").unwrap()).join("codegen.rs");
+    let mut file = BufWriter::new(File::create(&path).unwrap());
+    // GENERATE MAP FOR LOCALISATION DICT
+    let mut builder = phf_codegen::Map::new();
 
-    match write_cbor("src/enka.cbor", create_enka_dict()) {
-        Ok(()) => {},
-        Err(r) =>
-            panic!("Something gone terribly wrong while saving enka.cbor: {:?}", r),
+    for (key, value) in locale {
+        builder.entry(key, &format!("\"{}\"", value));
     }
-}
+    writeln!(
+        &mut file,
+         "static DICT: phf::Map<&'static str, &'static str> =\n{};\n",
+        builder.build()
+    ).unwrap();
+    // GENERATE MAP FOR SKILL ORDER
+    let mut builder_2 = phf_codegen::Map::new();
 
-fn write_cbor<T: serde::Serialize>(path: &str, bar: T) -> Result<(), Box<dyn std::error::Error>> {
-    let cbor_file = File::create(path)?;
-    serde_cbor::to_writer(cbor_file, &bar)?;
-    Ok(())
+    for (key, value) in skill_order {
+        builder_2.entry(key, &format!("&({},{},{})", value.0, value.1, value.2));
+    }
+    writeln!(
+        &mut file,
+         "static SKILLS: phf::Map<&'static str, &'static (u32, u32, u32)> =\n{};\n",
+        builder_2.build()
+    ).unwrap();
+
 }
 
 // Please can you make this generic?
@@ -54,7 +65,7 @@ fn parse_loc_json(filename: &str) -> HashMap<String, String> {
 }
 
 // Pre-converted HashMap
-fn parse_characters_json(filename: &str) -> HashMap<String, CharData> {
+fn parse_characters_json(filename: &str) -> HashMap<String, (String, u32, u32, u32)> {
     // Read file characters.json into characters var
     let file = File::open(filename).unwrap();
     let reader = BufReader::new(file);
@@ -62,14 +73,16 @@ fn parse_characters_json(filename: &str) -> HashMap<String, CharData> {
     // Read locale
     let loc_map_en: HashMap<String, String> = parse_loc_json("src/loc.json");
     // Resulting HashMap
-    let mut out: HashMap<String, CharData> = HashMap::new();
+    let mut out: HashMap<String, (String, u32, u32, u32)> = HashMap::new();
     for (char, info) in characters {
         match info.NameTextMapHash {
             Some(x) => {
-                out.insert(char, CharData {
-                    good_name: format_for_good(loc_map_en.get(&x.to_string()).unwrap().to_string()),
-                    skill_order: info.SkillOrder.unwrap(),
-                });
+                out.insert(char, (
+                    format_for_good(loc_map_en.get(&x.to_string()).unwrap().to_string()),
+                    info.SkillOrder.unwrap().0,
+                    info.SkillOrder.unwrap().1,
+                    info.SkillOrder.unwrap().2,
+                ));
             },
             None => continue,
         }
@@ -123,12 +136,6 @@ fn format_for_good(input: String) -> String {
 struct CharacterInfo {
     SkillOrder: Option<(u32, u32, u32)>,
     NameTextMapHash: Option<u32>,
-}
-
-#[derive(serde::Serialize)]
-struct CharData {
-    good_name: String,
-    skill_order: (u32, u32, u32),
 }
 
 fn test_format_for_good() {
