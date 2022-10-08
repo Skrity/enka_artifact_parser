@@ -5,13 +5,8 @@ mod types;
 
 use types::{
     EnkaPlayer,
-    EquipVariant::{Artifact,Weapon},
-    GoodType,
-    GoodArtifact,
-    GoodSubstat,
-    GoodWeapon,
-    GoodCharacter,
-    GoodTalents,
+    EquipVariant::{Artifact, Weapon},
+    good::{GoodType, GoodArtifact, GoodSubstat, GoodWeapon, GoodCharacter, GoodTalents},
     CharData,
 };
 use std::collections::HashMap;
@@ -19,11 +14,10 @@ use clap::Parser;
 use anyhow::{Result,Context};
 
 #[derive(Parser)]
-#[command(name = "Enka Artifact Parser")]
-#[command(author = "skrit <skrityx@gmail.com>")]
-#[command(version = "0.1.0")]
-#[command(about = "Parses your ENKA profile artifacts to GOOD format.",
-    long_about = None)]
+#[command(name = env!("CARGO_PKG_NAME"))]
+#[command(author = env!("CARGO_PKG_AUTHORS"))]
+#[command(version = env!("CARGO_PKG_VERSION"))]
+#[command(about = env!("CARGO_PKG_DESCRIPTION"), long_about = None)]
 struct Args {
    /// Your account UID
    uid: String,
