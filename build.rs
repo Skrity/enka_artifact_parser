@@ -4,22 +4,23 @@ use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
 use std::env;
 
-// Also you can pull jsons from github
-// https://raw.githubusercontent.com/EnkaNetwork/API-docs/master/store/loc.json
-// https://raw.githubusercontent.com/EnkaNetwork/API-docs/master/store/characters.json
+const FILES: [(&str, &str); 2] = [
+    ("src/loc.json", "https://raw.githubusercontent.com/EnkaNetwork/API-docs/master/store/loc.json"),
+    ("src/characters.json", "https://raw.githubusercontent.com/EnkaNetwork/API-docs/master/store/characters.json"),
+];
+
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=src/loc.json");
-    println!("cargo:rerun-if-changed=src/characters.json");
-
-    test_format_for_good();
-
-    let mut locale = parse_loc_json("src/loc.json");
+    // Download updated files
+    for file in FILES {
+        download_file(file);
+    }
+    let mut locale = parse_loc_json(FILES[0].0);
     let mut skill_order: HashMap<String, (u32, u32, u32)> = HashMap::new();
     for (k, v) in create_enka_dict() {
         locale.insert(k.to_owned(), v.to_owned());
     }
-    let char_json = parse_characters_json("src/characters.json");
+    let char_json = parse_characters_json(FILES[1].0);
     for (k, v) in char_json {
         locale.insert(k.to_owned(), v.0);
         skill_order.insert(k, (v.1, v.2, v.3));
@@ -138,10 +139,11 @@ struct CharacterInfo {
     NameTextMapHash: Option<u32>,
 }
 
-fn test_format_for_good() {
-    assert_eq!("GladiatorsFinale", format_for_good("Gladiator's Finale".to_string()));
-    assert_eq!("SpiritLocketOfBoreas", format_for_good("Spirit Locket of Boreas".to_string()));
-    assert_eq!("TheCatch", format_for_good("The Catch".to_string()));
-    assert_eq!("ABDD", format_for_good("'''A b d435 D123/ /'''".to_string()));
-    // Add test for every non-alphabetical symbol
+fn download_file(file: (&str, &str)) {
+    let loc = minreq::get(file.1)
+    .send()
+    .unwrap();
+
+    let mut file = File::create(file.0).unwrap();
+    writeln!(&mut file, "{}", loc.as_str().unwrap()).unwrap();
 }

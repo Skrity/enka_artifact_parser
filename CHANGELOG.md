@@ -2,6 +2,7 @@
 
 ## Running changes
 
+- download dicts at build time
 - covered recoverable errors in match statements
 - remove Indexing everywhere in favour of get()
 - use phf_map instead of CBOR

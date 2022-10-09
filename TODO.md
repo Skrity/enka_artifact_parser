@@ -5,7 +5,6 @@
 ## Main
 
 - [ ] Handle ctrl+c
-- [ ] Test ENKA types for nullability, context: promoteLevel fix in this commit
 
 ## Types
 
@@ -16,7 +15,6 @@
 
 - [ ] Cleanup, refactor
 - [ ] Lookup how to implement tests in build.rs
-- [ ] Download new loc.json altogether at build time
 
 ## DONE
 
@@ -45,5 +43,7 @@
 - [x] Move todo from main.rs
 - [x] Move GOOD to it's own file
 - [-] Change affix map to tuple
-- [+] Use phf instead of static_lazy
+- [x] Use phf instead of static_lazy
 - [-] Move tests to different file (needed?)
+- [x] Test ENKA types for nullability, context: promoteLevel fix in this commit
+- [x] Download new loc.json altogether at build time
