@@ -4,9 +4,9 @@ use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
 use std::env;
 
-const FILES: [(&str, &str); 2] = [
-    ("src/loc.json", "https://raw.githubusercontent.com/EnkaNetwork/API-docs/master/store/loc.json"),
-    ("src/characters.json", "https://raw.githubusercontent.com/EnkaNetwork/API-docs/master/store/characters.json"),
+const FILES: [[&str; 2]; 2] = [
+    ["src/loc.json", "https://raw.githubusercontent.com/EnkaNetwork/API-docs/master/store/loc.json"],
+    ["src/characters.json", "https://raw.githubusercontent.com/EnkaNetwork/API-docs/master/store/characters.json"],
 ];
 
 fn main() {
@@ -15,12 +15,12 @@ fn main() {
     for file in FILES {
         download_file(file);
     }
-    let mut locale = parse_loc_json(FILES[0].0);
+    let mut locale = parse_loc_json(FILES[0][0]);
     let mut skill_order: HashMap<String, (u32, u32, u32)> = HashMap::new();
     for (k, v) in create_enka_dict() {
         locale.insert(k.to_owned(), v.to_owned());
     }
-    let char_json = parse_characters_json(FILES[1].0);
+    let char_json = parse_characters_json(FILES[1][0]);
     for (k, v) in char_json {
         locale.insert(k.to_owned(), v.0);
         skill_order.insert(k, (v.1, v.2, v.3));
@@ -43,11 +43,11 @@ fn main() {
     let mut builder_2 = phf_codegen::Map::new();
 
     for (key, value) in skill_order {
-        builder_2.entry(key, &format!("&({},{},{})", value.0, value.1, value.2));
+        builder_2.entry(key, &format!("&[{},{},{}]", value.0, value.1, value.2));
     }
     writeln!(
         &mut file,
-         "static SKILLS: phf::Map<&'static str, &'static (u32, u32, u32)> =\n{};\n",
+         "static SKILLS: phf::Map<&'static str, &'static [u32; 3]> =\n{};\n",
         builder_2.build()
     ).unwrap();
 
@@ -60,7 +60,7 @@ fn parse_loc_json(filename: &str) -> HashMap<String, String> {
     let u: HashMap<String, HashMap<String,String>> = serde_json::from_reader(reader).unwrap();
     let mut temp: HashMap<String,String> = HashMap::new();
     for (key, value) in &u["en"] {
-        temp.insert(key.to_string(),format_for_good(value.to_string()));
+        temp.insert(key.to_string(),format_for_good(&value.to_string()));
     }
     temp
 }
@@ -79,7 +79,7 @@ fn parse_characters_json(filename: &str) -> HashMap<String, (String, u32, u32, u
         match info.NameTextMapHash {
             Some(x) => {
                 out.insert(char, (
-                    format_for_good(loc_map_en.get(&x.to_string()).unwrap().to_string()),
+                    format_for_good(&loc_map_en.get(&x.to_string()).unwrap().to_string()),
                     info.SkillOrder.unwrap().0,
                     info.SkillOrder.unwrap().1,
                     info.SkillOrder.unwrap().2,
@@ -121,7 +121,7 @@ fn create_enka_dict() -> HashMap<&'static str, &'static str> {
     ])
 }
 
-fn format_for_good(input: String) -> String {
+fn format_for_good(input: &str) -> String {
     input
         .split(" ")
         .map(|word| format!("{}{}", &word[..1].to_uppercase(), &word[1..]))
@@ -139,11 +139,11 @@ struct CharacterInfo {
     NameTextMapHash: Option<u32>,
 }
 
-fn download_file(file: (&str, &str)) {
-    let loc = minreq::get(file.1)
+fn download_file(file: [&str; 2]) {
+    let loc = minreq::get(file[1])
     .send()
     .unwrap();
 
-    let mut file = File::create(file.0).unwrap();
+    let mut file = File::create(file[0]).unwrap();
     writeln!(&mut file, "{}", loc.as_str().unwrap()).unwrap();
 }

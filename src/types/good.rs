@@ -27,7 +27,7 @@ impl GoodType {
         }
     }
 
-    pub fn to_file(&self, filename: String) -> Result<()> {
+    pub fn to_file(&self, filename: &str) -> Result<()> {
         use std::fs::File;
         use std::io::Write;
 
@@ -37,7 +37,7 @@ impl GoodType {
         Ok(())
     }
 
-    pub fn from_file(filename: String) -> Result<GoodType> {
+    pub fn from_file(filename: &str) -> Result<GoodType> {
         use std::fs::File;
         use std::io::BufReader;
 

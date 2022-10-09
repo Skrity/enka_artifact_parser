@@ -30,7 +30,7 @@ include!(concat!(env!("OUT_DIR"), "/codegen.rs"));
 
 fn main() {
     loop {
-        match pull_file(Args::parse().uid) {
+        match pull_file(&Args::parse().uid) {
             Ok(player) => {
                 let ttl = parse_data(player).unwrap_or(120)+1;
                 println!("Sleeping for {} seconds.",ttl);
@@ -50,7 +50,7 @@ fn parse_data(enka: EnkaPlayer) -> Result<u8> {
     if std::path::Path::new(&filename).exists() {
         println!("Found existing file {}, trying to append.", filename);
         println!("This can go wrong if program version changed.");
-        data = GoodType::from_file(filename.clone())
+        data = GoodType::from_file(&filename)
             .context("Error while reading old file.")?;
     } else {
         println!("File {} not found, creating one.",filename);
@@ -82,11 +82,11 @@ fn parse_data(enka: EnkaPlayer) -> Result<u8> {
                         .parse::<u8>()
                         .context("Error while converting character ascension into u8")?,
                     talent: GoodTalents {
-                        auto:  *character.skill_level_map.get(&talent_ids.0.to_string())
+                        auto:  *character.skill_level_map.get(&talent_ids[0].to_string())
                             .unwrap_or(&1),
-                        skill: *character.skill_level_map.get(&talent_ids.1.to_string())
+                        skill: *character.skill_level_map.get(&talent_ids[1].to_string())
                             .unwrap_or(&1),
-                        burst: *character.skill_level_map.get(&talent_ids.2.to_string())
+                        burst: *character.skill_level_map.get(&talent_ids[2].to_string())
                             .unwrap_or(&1),
                     },
                 });
@@ -149,11 +149,11 @@ fn parse_data(enka: EnkaPlayer) -> Result<u8> {
         }
         println!();
     };
-    data.to_file(filename)?;
+    data.to_file(&filename)?;
     Ok(enka.ttl)
 }
 
-fn pull_file(uid: String) -> Result<EnkaPlayer> {
+fn pull_file(uid: &str) -> Result<EnkaPlayer> {
     Ok(
         minreq::get(format!("https://enka.network/u/{}/__data.json", uid))
             .send()

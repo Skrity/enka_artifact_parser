@@ -2,6 +2,8 @@
 
 ## Running changes
 
+- changed functions to take &str to avoid excessive copying
+- changed skill_order from tuple to array
 - download dicts at build time
 - covered recoverable errors in match statements
 - remove Indexing everywhere in favour of get()
