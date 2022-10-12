@@ -38,7 +38,7 @@ pub struct AvatarProps {
     #[serde(rename = "1002")]
     pub ascension: Prop,
 }
-
+//TODO: Check logic here, consider that prop is optional, not the val
 #[derive(Deserialize)]
 pub struct Prop {
     pub val: Option<String>,

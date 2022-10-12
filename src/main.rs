@@ -22,17 +22,19 @@ use anyhow::{Result,Context};
 #[command(about = env!("CARGO_PKG_DESCRIPTION"), long_about = None)]
 struct Args {
    /// Your account UID
-   uid: String,
+   uid: u32,
 }
 
 // Contains pre-generated maps of data: loc.json, characters.json, enka stuff
 include!(concat!(env!("OUT_DIR"), "/codegen.rs"));
 
-fn main() {
+fn main() -> Result<()> {
     loop {
-        match pull_file(&Args::parse().uid) {
+        match pull_file(&form_url(Args::parse().uid))
+            .context("Query to ENKA failed.")?.json::<EnkaPlayer>() {
             Ok(player) => {
-                let ttl = parse_data(player).unwrap_or(120)+1;
+                let ttl = parse_data(player)
+                    .unwrap_or(120)+1;
                 println!("Sleeping for {} seconds.",ttl);
                 std::thread::sleep(std::time::Duration::from_secs(ttl.into()));
             },
@@ -51,7 +53,7 @@ fn parse_data(enka: EnkaPlayer) -> Result<u8> {
         println!("Found existing file {}, trying to append.", filename);
         println!("This can go wrong if program version changed.");
         data = GoodType::from_file(&filename)
-            .context("Error while reading old file.")?;
+            .context("Parsing existing file failed.")?;
     } else {
         println!("File {} not found, creating one.",filename);
         data = GoodType::new();
@@ -153,12 +155,13 @@ fn parse_data(enka: EnkaPlayer) -> Result<u8> {
     Ok(enka.ttl)
 }
 
-fn pull_file(uid: &str) -> Result<EnkaPlayer> {
-    Ok(
-        minreq::get(format!("https://enka.network/u/{}/__data.json", uid))
+fn pull_file(url: &str) -> Result<minreq::Response> {
+    let a = minreq::get(url)
             .send()
-            .context("Error while doing HTTP GET")?
-            .json()
-            .context("Error while parsing JSON response")?
-    )
+            .context("Error while doing HTTP GET")?;
+    Ok(a)
+}
+
+fn form_url(uid: u32) -> String {
+    format!("https://enka.network/u/{}/__data.json", uid)
 }
